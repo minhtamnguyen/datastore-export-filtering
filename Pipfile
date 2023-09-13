@@ -5,3 +5,11 @@ name = "pypi"
 
 [requires]
 python_version = "3.9"
+
+[dev-packages]
+pytest = "*"
+
+[packages]
+pytimeparse = "*"
+pyyaml = "*"
+apache-beam = {extras = ["gcp"], version = "*"}

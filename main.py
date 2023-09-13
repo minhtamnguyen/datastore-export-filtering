@@ -49,7 +49,7 @@ def run(argv=None):
 
     pipeline_options.view_as(beam.options.pipeline_options.SetupOptions).setup_file = './setup.py'
     pipeline_options.view_as(beam.options.pipeline_options.SetupOptions).save_main_session = True
-    pipeline_options.view_as(beam.options.pipeline_options.GoogleCloudOptions).region = "us-east1"
+    pipeline_options.view_as(beam.options.pipeline_options.GoogleCloudOptions).region = "europe-west2"
     pipeline_options.view_as(beam.options.pipeline_options.WorkerOptions).machine_type = 'n1-standard-1'
     pipeline_options.view_as(beam.options.pipeline_options.WorkerOptions).num_workers = 2
     pipeline_options.view_as(beam.options.pipeline_options.WorkerOptions).disk_size_gb = 25
@@ -60,14 +60,14 @@ def run(argv=None):
     class TagElementsWithData(beam.DoFn):
         def process(self, element):
             tag = 'write_truncate'
-            if element['__key__']['kind'] in conf['KindsToExport']:
+            if element['kind'] in conf['KindsToExport']:
                 tag = 'write_append'
             yield TaggedOutput(tag, element)
 
     with beam.Pipeline(options=pipeline_options) as p:
         # Create a query and filter
         rows = (p
-                | 'get all kinds' >> GetAllKinds(project_id, prefix_of_kinds_to_ignore)
+                | 'get all kinds' >> beam.Create(['Task'])
                 | 'create queries' >> beam.ParDo(CreateQuery(project_id, entity_filtering))
                 | 'read from datastore' >> beam.ParDo(ReadFromDatastore._QueryFn())
                 | 'convert entities' >> beam.Map(entity_to_json)
@@ -79,16 +79,17 @@ def run(argv=None):
         write_truncate = tagged_data.write_truncate
 
         # Write entities that are after filtering.
-        _ = write_append | 'write append' >> BigQueryBatchFileLoads(
-            destination=lambda row: f"{project_id}:{output_dataset}.{row['__key__']['kind'].lower()}",
-            custom_gcs_temp_location=f'{gcs_dir}/append',
-            write_disposition='WRITE_APPEND',
-            create_disposition='CREATE_IF_NEEDED',
-            schema='SCHEMA_AUTODETECT')
+        # _ = write_append | 'write append' >> BigQueryBatchFileLoads(
+        #     destination=lambda row: f"{project_id}:{output_dataset}.{row['__key__']['kind'].lower()}",
+        #     custom_gcs_temp_location=f'{gcs_dir}/append',
+        #     write_disposition='WRITE_APPEND',
+        #     create_disposition='CREATE_IF_NEEDED',
+        #     schema='SCHEMA_AUTODETECT')
 
         # Write the kinds that are not filtered - full load mode.
+        # _ = write_truncate | beam.ParDo(print)
         _ = write_truncate | 'write truncate' >> BigQueryBatchFileLoads(
-            destination=lambda row: f"{project_id}:{output_dataset}.{row['__key__']['kind'].lower()}",
+            destination=lambda row: f"{project_id}:{output_dataset}.{row['kind'].lower()}",
             custom_gcs_temp_location=f'{gcs_dir}/truncate',
             write_disposition='WRITE_TRUNCATE',
             create_disposition='CREATE_IF_NEEDED',

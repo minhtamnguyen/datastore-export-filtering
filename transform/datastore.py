@@ -44,22 +44,20 @@ def entity_to_json(entity):
     kind = get_kind(entity)
 
     entity_dict = {
-        '__key__': {
-            'name': isinstance(kind.id, str) and kind.id or None,
-            'id': isinstance(kind.id, int) and kind.id or None,
-            'kind': kind.name,
-            'namespace': entity.key.namespace,
-            'path': '/'.join(map(str, entity.key.path_elements))
-        }
+        'name': isinstance(kind.id, str) and kind.id or None,
+        'id': isinstance(kind.id, int) and kind.id or None,
+        'kind': kind.name,
+        'namespace': entity.key.namespace,
+        'path': '/'.join(map(str, entity.key.path_elements))
     }
 
-    for k, v in entity.properties.items():
-        if isinstance(v, datetime.datetime):
-            entity_dict[k] = str(v)
-        elif isinstance(v, GeoPoint):
-            entity_dict[k] = {'lat': str(v.latitude), 'lng': str(v.longitude)}
-        else:
-            entity_dict[k] = v
+    # for k, v in entity.properties.items():
+    #     if isinstance(v, datetime.datetime):
+    #         entity_dict[k] = str(v)
+    #     elif isinstance(v, GeoPoint):
+    #         entity_dict[k] = {'lat': str(v.latitude), 'lng': str(v.longitude)}
+    #     else:
+    #         entity_dict[k] = v
 
     return entity_dict
 
